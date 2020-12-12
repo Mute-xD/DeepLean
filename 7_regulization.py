@@ -12,7 +12,7 @@ class MNIST:
         self.xTrain = self.xTrain.reshape(self.xTrain.shape[0], -1) / 255.0
         self.xTest = self.xTest.reshape(self.xTest.shape[0], -1) / 255.0
 
-        self.yTrain = k.utils.to_categorical(self.yTrain, )
+        self.yTrain = k.utils.to_categorical(self.yTrain)
         self.yTest = k.utils.to_categorical(self.yTest)
 
     def build(self):
