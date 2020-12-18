@@ -1,10 +1,10 @@
-import keras as k
+import tensorflow.keras as k
 import numpy as np
 import matplotlib.pyplot as plt
-from keras.models import Sequential
-from keras.layers import Conv2D, Dropout, Dense, LeakyReLU, Flatten, \
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, Dropout, Dense, LeakyReLU, Flatten, \
     BatchNormalization, Activation, Reshape, UpSampling2D, Conv2DTranspose
-from keras.optimizers import RMSprop
+from tensorflow.keras.optimizers import RMSprop
 
 
 class GanMNISTBase:
