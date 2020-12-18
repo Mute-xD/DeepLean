@@ -1,4 +1,4 @@
-import keras as k
+import tensorflow.keras as k
 import numpy as np
 import matplotlib.pyplot as plt
 from keras.models import Sequential
