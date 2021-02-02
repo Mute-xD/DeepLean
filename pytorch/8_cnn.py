@@ -84,16 +84,22 @@ class MNIST:
 class MNISTModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1 = nn.Sequential(nn.Linear(784, 500), nn.Tanh())
-        self.layer2 = nn.Sequential(nn.Linear(500, 300), nn.Tanh())
-        self.layer3 = nn.Sequential(nn.Linear(300, 10), nn.Softmax(dim=1))  # 目标维度 此处为(64, 10)
+        self.conv1 = nn.Sequential(nn.Conv2d(1, 32, 5, stride=1, padding=2),
+                                   nn.ReLU(), nn.MaxPool2d(2, 2))
+        self.conv2 = nn.Sequential(nn.Conv2d(32, 64, 5, stride=1, padding=2),
+                                   nn.ReLU(), nn.MaxPool2d(2, 2))
+        self.fullCon3 = nn.Sequential(nn.Linear(64*7*7, 1000), nn.Dropout(), nn.ReLU())
+        self.fullCon4 = nn.Sequential(nn.Linear(1000, 10), nn.Softmax(dim=1))
 
     def forward(self, x):
         x.cuda(non_blocking=True)
-        x = x.view(x.size()[0], -1)  # (64, 1, 28, 28) -> (64, 784)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
+        'For conv, input must be [batch, channel(1 or 3, gray or color), height, width]'
+        x = self.conv1(x)
+        x = self.conv2(x)
+        'For full connect, input must be [batch, height*weight](flatten)'
+        x = x.view(x.size()[0], -1)
+        x = self.fullCon3(x)
+        x = self.fullCon4(x)
         return x
 
 
