@@ -1,3 +1,5 @@
 .idea
 catAndDog/dataSet
 /GAN/generated/
+/pytorch/runs/
+/pytorch/mnist/

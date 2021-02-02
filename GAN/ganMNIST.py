@@ -1,18 +1,35 @@
-import tensorflow.keras as k
 import numpy as np
-import matplotlib.pyplot as plt
+import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, Dropout, Dense, LeakyReLU, Flatten, \
     BatchNormalization, Activation, Reshape, UpSampling2D, Conv2DTranspose
 from tensorflow.keras.optimizers import RMSprop
+import struct
+
+
+def setGPUMemoryGrowth():  # not working nothing changed
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            print(e)
+    else:
+        print('No GPU Found')
+
+
+setGPUMemoryGrowth()
 
 
 class GanMNISTBase:
     def __init__(self):
-        self.dis = None  # discriminator
-        self.gen = None  # generator
-        self.disMod = None  # discriminator model
-        self.advMod = None  # adversarial model
+        self.dis = None
+        self.gen = None
+        self.disMod = None
+        self.advMod = None
         self.imgShape = (28, 28, 1)
 
     def discriminator(self):
@@ -40,6 +57,8 @@ class GanMNISTBase:
         self.dis.add(Dense(1, activation='sigmoid'))
         self.dis.summary()
         return self.dis
+
+
 
     def generator(self):
         if self.gen is not None:
@@ -95,16 +114,29 @@ class GanMNISTBase:
 class GanMNIST:
     def __init__(self):
         self.base = GanMNISTBase()
-        (self.xTrain, self.yTrain), (self.xTest, self.yTest) = k.datasets.mnist.load_data()
+        self.trainLabel, self.trainImage = None, None
+        self.loadDataset()
+        self.xTrain = self.trainImage
         self.xTrain = self.xTrain / 255.0
         self.xTrain = self.xTrain.reshape(-1, 28, 28, 1).astype(np.float32)
         self.dis = self.base.discriminatorModel()
         self.adv = self.base.adversarialModel()
         self.gen = self.base.generator()
 
-    def runner(self, trainStep=2000, batchSize=256, saveInterval=0):
-        noiseInput = np.random.uniform(-1.0, 1.0, size=[16, 100])
-        for i in range(trainStep):
+    def loadDataset(self):
+        with open('../MNIST_data/train-labels.idx1-ubyte', 'rb') as data:
+            magic, n = struct.unpack('>II', data.read(8))
+            self.trainLabel = np.fromfile(data, dtype=np.uint8)
+        with open('../MNIST_data/train-images.idx3-ubyte', 'rb') as data:
+            magic, num, row, col = struct.unpack('>IIII', data.read(16))
+            self.trainImage = np.fromfile(data, dtype=np.uint8).reshape(len(self.trainLabel), -1)
+
+        print('Dataset Loading Succeed!')
+
+    def runner(self, trainStep=2000, batchSize=256):
+        counter = 0
+        while True:
+            counter += 1
             imgReal = self.xTrain[np.random.randint(0, self.xTrain.shape[0], size=batchSize), :, :, :]
             noise = np.random.uniform(-1.0, 1.0, size=[batchSize, 100])
             imgFake = self.gen.predict(noise)
@@ -117,41 +149,11 @@ class GanMNIST:
             noise = np.random.uniform(-1.0, 1.0, size=[batchSize, 100])
             advLoss = self.adv.train_on_batch(noise, yLabel)
 
-            logMsg = "%d: [D loss: %f, acc: %f]" % (i, disLoss[0], disLoss[1])
+            logMsg = "%d: [D loss: %f, acc: %f]" % (counter, disLoss[0], disLoss[1])
             logMsg = "%s  [A loss: %f, acc: %f]" % (logMsg, advLoss[0], advLoss[1])
             print(logMsg)
-            if saveInterval > 0:
-                # 每save_interval次保存一次
-                if (i + 1) % saveInterval == 0:
-                    self.plotImg(save2file=True, samples=noiseInput.shape[0], noise=noiseInput, step=(i + 1))
-
-    def plotImg(self, save2file=False, samples=16, noise=None, step=0, fake=True):
-        filename = './generated/mnist.png'
-        if fake:
-            if noise is None:
-                noise = np.random.uniform(-1.0, 1.0, size=[samples, 100])
-            else:
-                filename = "./generated/mnist_%d.png" % step
-            images = self.gen.predict(noise)
-        else:
-            i = np.random.randint(0, self.xTrain.shape[0], samples)
-            images = self.xTrain[i, :, :, :]
-        plt.figure(figsize=(10, 10))
-        for i in range(images.shape[0]):
-            plt.subplot(4, 4, i + 1)
-            image = images[i, :, :, :]
-            image = np.reshape(image, [28, 28])
-            plt.imshow(image, cmap='gray')
-            plt.axis('off')
-        if save2file:
-            plt.savefig(filename)
-            plt.close('all')
-        else:
-            plt.show()
 
 
 if __name__ == '__main__':
     gan = GanMNIST()
-    gan.runner(trainStep=10000, batchSize=256, saveInterval=500)
-    gan.plotImg(fake=True, step=-1)
-    gan.plotImg(fake=False, step=-2)
+    gan.runner(trainStep=10000, batchSize=256)
